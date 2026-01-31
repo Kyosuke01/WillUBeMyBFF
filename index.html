@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Will you be my BFF?</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #e0c3d4 0%, #d4a5c0 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        .container {
+            background: white;
+            padding: 40px 150px;
+            border-radius: 30px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+            text-align: center;
+            position: relative;
+            min-width: 600px;
+        }
+
+        .bear {
+            font-size: 100px;
+            margin-bottom: 20px;
+            position: relative;
+            display: inline-block;
+        }
+
+        .heart {
+            position: absolute;
+            top: -10px;
+            right: -10px;
+            font-size: 40px;
+        }
+
+        h1 {
+            font-size: 28px;
+            color: #333;
+            margin-bottom: 40px;
+            font-weight: 500;
+        }
+
+        .buttons-wrapper {
+            display: flex;
+            justify-content: left;
+            align-items: center;
+            margin-bottom: 30px;
+            position: relative;
+            height: 60px;
+        }
+
+        #yesBtn {
+            background: #ff4d7d;
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 25px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(255, 77, 125, 0.3);
+            position: relative;
+            z-index: 10;
+        }
+
+        #yesBtn:hover {
+            background: #ff3366;
+            transform: scale(1.05);
+        }
+
+        #noBtn {
+            background: white;
+            color: #666;
+            border: 2px solid #ddd;
+            padding: 15px 40px;
+            border-radius: 25px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            position: fixed;
+            user-select: none;
+            z-index: 9;
+            transition: all 0.15s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+
+        .note {
+            font-size: 14px;
+            color: #999;
+        }
+
+        .gif-container {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .gif-container img {
+            max-width: 400px;
+            width: 100%;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .success-message {
+            font-size: 32px;
+            color: #ff4d7d;
+            font-weight: bold;
+            animation: bounce 0.5s ease;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="questionSection">
+            <div class="bear">
+                🐻
+                <span class="heart">💗</span>
+            </div>
+            <h1>Will you be my BFF?</h1>
+            <div class="buttons-wrapper">
+                <div class="buttons" id="buttonsContainer">
+                    <button id="yesBtn">Yes</button>
+                    <button id="noBtn">No</button>
+                </div>
+            </div>
+            <div class="note">*No matter what you'll choose 💕💖</div>
+        </div>
+
+        <div id="gifSection" class="gif-container">
+            <div class="success-message">Yaaay! 🎉</div>
+            <img src="https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExZXBoZG81Y2xpc2w4Y3E5ajVrMmE2cHV6a3RscjQ0bjR4djAyNjYzMiZlcD12MV9naWZzX3NlYXJjaCZjdD1n/3rgXBxX4myufzT6N2w/giphy.gif" alt="Celebration GIF">
+        </div>
+    </div>
+
+    <script>
+        const yesBtn = document.getElementById('yesBtn');
+        const noBtn = document.getElementById('noBtn');
+        const buttonsContainer = document.getElementById('buttonsContainer');
+        const questionSection = document.getElementById('questionSection');
+        const gifSection = document.getElementById('gifSection');
+
+        // Configuration
+        const SAFE_DISTANCE = 180; // Distance de sécurité à maintenir avec la souris
+        const ESCAPE_MULTIPLIER = 1.4; // Multiplicateur pour s'éloigner encore plus
+        const EDGE_MARGIN = 20; // Marge minimale par rapport aux bords
+
+        // Variables
+        let yesBtnScale = 1;
+        let noBtnInitialized = false;
+        let mouseX = -9999;
+        let mouseY = -9999;
+
+
+        // Dimensions du bouton
+        let buttonWidth = 0;
+        let buttonHeight = 0;
+
+        // Position cible pour un mouvement fluide
+        let targetX = 0;
+        let targetY = 0;
+        let currentX = 0;
+        let currentY = 0;
+
+        // Initialiser la position du bouton "No" au centre
+        function initializeNoButton() {
+            if (noBtnInitialized) return;
+
+            // Obtenir la position du conteneur des boutons
+            const containerRect = buttonsContainer.getBoundingClientRect();
+            const yesRect = yesBtn.getBoundingClientRect();
+
+            buttonWidth = noBtn.offsetWidth;
+            buttonHeight = noBtn.offsetHeight;
+
+            // Calculer le centre du conteneur
+            const containerCenterX = containerRect.left + containerRect.width / 2;
+            const containerCenterY = containerRect.top + containerRect.height / 2;
+
+            // Positionner "No" à droite du centre avec un espacement
+            const spacing = 15; // Espacement entre les deux boutons
+            const yesBtnWidth = yesRect.width;
+
+            // Position initiale : même position que Yes + 200px à droite
+            const left = yesRect.left + 200;
+            const top = yesRect.top;
+
+            noBtn.style.left = left + 'px';
+            noBtn.style.top = top + 'px';
+
+            currentX = left;
+            currentY = top;
+            targetX = left;
+            targetY = top;
+
+            noBtnInitialized = true;
+        }
+
+        // Calculer la distance entre deux points
+        function getDistance(x1, y1, x2, y2) {
+            return Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
+        }
+
+        // Calculer la position optimale pour le bouton "No"
+        function calculateOptimalPosition(mouseX, mouseY) {
+            // Centre actuel du bouton
+            const centerX = currentX + buttonWidth / 2;
+            const centerY = currentY + buttonHeight / 2;
+
+            // Calculer le vecteur depuis la souris vers le bouton
+            const deltaX = centerX - mouseX;
+            const deltaY = centerY - mouseY;
+            const currentDistance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+
+            // Si la souris est trop proche, calculer une nouvelle position
+            if (currentDistance < SAFE_DISTANCE) {
+                // Direction pour s'éloigner de la souris
+                let dirX = deltaX;
+                let dirY = deltaY;
+
+                // Normaliser la direction
+                if (currentDistance > 0.01) {
+                    dirX = deltaX / currentDistance;
+                    dirY = deltaY / currentDistance;
+                } else {
+                    // Si la souris est exactement sur le bouton, choisir une direction aléatoire
+                    const angle = Math.random() * Math.PI * 2;
+                    dirX = Math.cos(angle);
+                    dirY = Math.sin(angle);
+                }
+
+                // Calculer la nouvelle position en s'éloignant
+                const targetDistance = SAFE_DISTANCE * ESCAPE_MULTIPLIER;
+                const newCenterX = mouseX + dirX * targetDistance;
+                const newCenterY = mouseY + dirY * targetDistance;
+
+                // Convertir en coordonnées top-left
+                let newX = newCenterX - buttonWidth / 2;
+                let newY = newCenterY - buttonHeight / 2;
+
+                // Contraindre aux limites de l'écran avec marge minimale
+                const minX = EDGE_MARGIN;
+                const maxX = window.innerWidth - buttonWidth - EDGE_MARGIN;
+                const minY = EDGE_MARGIN;
+                const maxY = window.innerHeight - buttonHeight - EDGE_MARGIN;
+
+                newX = Math.max(minX, Math.min(maxX, newX));
+                newY = Math.max(minY, Math.min(maxY, newY));
+
+                // Si on est collé à un bord et encore trop proche
+                const finalCenterX = newX + buttonWidth / 2;
+                const finalCenterY = newY + buttonHeight / 2;
+                const finalDistance = getDistance(mouseX, mouseY, finalCenterX, finalCenterY);
+
+                if (finalDistance < SAFE_DISTANCE * 0.7) {
+                    // Trouver le coin le plus éloigné de la souris
+                    const corners = [
+                        { x: minX, y: minY },
+                        { x: maxX, y: minY },
+                        { x: minX, y: maxY },
+                        { x: maxX, y: maxY }
+                    ];
+
+                    let bestCorner = corners[0];
+                    let maxDist = 0;
+
+                    corners.forEach(corner => {
+                        const dist = getDistance(mouseX, mouseY, corner.x + buttonWidth / 2, corner.y + buttonHeight / 2);
+                        if (dist > maxDist) {
+                            maxDist = dist;
+                            bestCorner = corner;
+                        }
+                    });
+
+                    newX = bestCorner.x;
+                    newY = bestCorner.y;
+                }
+
+                return { x: newX, y: newY, shouldGrow: true };
+            }
+
+            // Si la distance est correcte, ne pas bouger
+            return { x: currentX, y: currentY, shouldGrow: false };
+        }
+
+        // Interpolation pour un mouvement fluide
+        function lerp(start, end, factor) {
+            return start + (end - start) * factor;
+        }
+
+        // Mettre à jour la position du bouton "No" avec interpolation
+        function updateNoButtonPosition() {
+            if (!noBtnInitialized) return;
+
+            const newPos = calculateOptimalPosition(mouseX, mouseY);
+
+            // Définir la cible
+            targetX = newPos.x;
+            targetY = newPos.y;
+
+            // Interpolation pour un mouvement fluide (facteur entre 0.15 et 0.3)
+            const smoothFactor = 0.2;
+            currentX = lerp(currentX, targetX, smoothFactor);
+            currentY = lerp(currentY, targetY, smoothFactor);
+
+            // Appliquer la position
+            noBtn.style.left = currentX + 'px';
+            noBtn.style.top = currentY + 'px';
+
+            if (newPos.shouldGrow) {
+                growYesButton();
+            }
+        }
+
+        // Agrandir progressivement le bouton "Yes"
+        function growYesButton() {
+            yesBtnScale += 0.005;
+            if (yesBtnScale > 2.7) yesBtnScale = 2.7;
+            yesBtn.style.transform = `scale(${yesBtnScale})`;
+        }
+
+        // Tracker le mouvement de la souris
+        document.addEventListener('mousemove', (e) => {
+            mouseX = e.clientX;
+            mouseY = e.clientY;
+        });
+
+        // Animation continue pour un mouvement fluide
+        function animate() {
+            updateNoButtonPosition();
+            requestAnimationFrame(animate);
+        }
+
+        // Initialiser la position au chargement
+        window.addEventListener('load', () => {
+            initializeNoButton();
+            animate();
+        });
+
+        // Réinitialiser les dimensions lors du redimensionnement
+        window.addEventListener('resize', () => {
+            buttonWidth = noBtn.offsetWidth;
+            buttonHeight = noBtn.offsetHeight;
+        });
+
+        // Gestion du clic sur "Yes"
+        yesBtn.addEventListener('click', () => {
+            questionSection.classList.add('hidden');
+            gifSection.style.display = 'flex';
+        });
+
+        // Empêcher le clic sur "No"
+        noBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+        });
+
+        noBtn.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+        });
+    </script>
+</body>
+</html>
